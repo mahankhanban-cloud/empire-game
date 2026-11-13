@@ -292,7 +292,7 @@ window.build=function(type,remote=false){if(!remote&&gameConn&&gameConn.open&&!i
 setInterval(()=>{if(gameConn&&gameConn.open&&!isHost)return;gold+=5;wood+=3+lumberjackCount*8;food+=4;showStats();if(gameConn&&gameConn.open&&isHost)sendGameMsg({type:'state',gold,wood,food});},5000);
 try{frame();}catch(e){drawFallback();let el=document.getElementById('err');el.style.display='block';el.textContent='نمای سه‌بعدی اجرا نشد؛ حالت سازگار نمایش داده شد.';}
 })();
-try{
+/*try{
 let s=localStorage.getItem("empireSave");
 if(s){
 let d=JSON.parse(s);
@@ -305,4 +305,4 @@ setInterval(()=>{
 localStorage.setItem("empireSave",JSON.stringify({
 gold,wood,food,army,cells,selected
 }));
-},2000);/script></body></html>
+},2000);*/</script>></body></html>
