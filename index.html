@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#17251c"><title>Empire Real 3D - Lumberjack Edition</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101a17;font-family:Tahoma,Arial,sans-serif;color:#fff}#game{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;background:linear-gradient(#70b7e5 0%,#b8d9e8 38%,#d9e4bd 68%,#6f9650 100%)}
+#top{position:fixed;top:env(safe-area-inset-top,8px);left:8px;right:8px;display:flex;justify-content:space-between;gap:6px;pointer-events:none}.pill{background:#17251cdd;border:1px solid #ffffff35;border-radius:12px;padding:8px 10px;font-size:12px;box-shadow:0 3px 12px #0005}.stats{display:flex;gap:5px;flex-wrap:wrap}.stat{min-width:62px;text-align:center}.stat b{display:block;font-size:15px;color:#ffe49a;margin-top:3px}#help{position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#132219c9;border:1px solid #ffffff30;border-radius:20px;padding:7px 12px;font-size:11px;white-space:nowrap;pointer-events:none}
+#bottom{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 10px);left:8px;right:8px;display:flex;justify-content:center;gap:7px;flex-wrap:wrap}.btn{border:1px solid #ffffff45;border-radius:12px;background:linear-gradient(#466b43,#263f2b);color:#fff;padding:11px 13px;font-weight:bold;font-size:12px;box-shadow:0 3px 10px #0007;min-width:76px}.btn:active{transform:scale(.96);filter:brightness(1.25)}#toast{position:fixed;bottom:85px;left:50%;transform:translateX(-50%);background:#15251deF;padding:9px 14px;border-radius:12px;font-size:12px;display:none;border:1px solid #ffffff35;max-width:90%;text-align:center}#err{position:fixed;inset:20% 8%;display:none;background:#301d1d;color:white;border:1px solid #ffaaaa;border-radius:16px;padding:20px;text-align:center;height:max-content;line-height:1.8}
+</style></head><body>
+<canvas id="game"></canvas><canvas id="fallback" style="position:fixed;inset:0;width:100%;height:100%;display:none;pointer-events:none"></canvas>
+<div id="top"><div class="pill">🏰 امپراتوری من<br><small>نسخه چوب‌بُر</small></div><div class="stats"><div class="pill stat">🪙 طلا<b id="gold">500</b></div><div class="pill stat">🪵 چوب<b id="wood">300</b></div><div class="pill stat">🌾 غذا<b id="food">250</b></div></div></div>
+<div id="help">با یک انگشت بچرخان • با دو انگشت زوم کن</div><div id="botHud" style="display:none;position:fixed;top:104px;left:50%;transform:translateX(-50%);background:#18291ee8;border:1px solid #ffffff55;border-radius:12px;padding:8px 12px;font-size:12px;white-space:nowrap;z-index:4">🤖 ربات: در حال ساخت امپراتوری</div>
+<div id="bottom"><button class="btn" onclick="openOnline()">🌐 دونفره آنلاین</button><button class="btn" onclick="startBotGame()">🤖 بازی با ربات</button><button class="btn" onclick="build('house')">🏠 خانه</button><button class="btn" onclick="build('farm')">🌾 مزرعه</button><button class="btn" onclick="build('tower')">🗼 برج</button><button class="btn" onclick="build('lumberjack')">🪓 چوب‌بُر</button><button class="btn" onclick="resetCam()">🎥 دوربین</button></div><div id="toast"></div><div id="err"></div>
+<div id="onlinePanel" style="display:none;position:fixed;inset:0;background:#07120ddd;z-index:20;align-items:center;justify-content:center;padding:18px">
+ <div style="width:min(440px,100%);background:#1b3024;border:1px solid #ffffff55;border-radius:18px;padding:18px;box-shadow:0 12px 40px #0009">
+  <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:18px">🌐 بازی دونفره آنلاین</b><button class="btn" onclick="closeOnline()" style="min-width:42px;padding:7px">✕</button></div>
+  <p style="font-size:12px;line-height:1.8;color:#d6e7d5">برای ساخت اتاق، دکمه ساخت سریع را بزن و کد ۶ رقمی را برای دوستت بفرست. دوستت کد را وارد می‌کند. هر دو نفر باید اینترنت داشته باشید.</p>
+  <button class="btn" onclick="createQuickRoom()" style="width:100%;background:linear-gradient(#4b8a50,#285b32);margin:10px 0">⚡ ساخت سریع اتاق</button>
+  <div class="pill" style="margin:8px 0">کد اتاق تو:<br><b id="myPeerId" style="display:block;direction:ltr;word-break:break-all;color:#ffe49a;font-size:25px;letter-spacing:5px;margin-top:7px">------</b></div>
+  <button class="btn" onclick="copyMyPeer()" style="width:100%;margin-bottom:12px">📋 کپی کد اتاق</button>
+  <input id="friendPeerId" inputmode="numeric" maxlength="6" placeholder="کد ۶ رقمی دوستت" style="width:100%;padding:13px;border-radius:10px;border:1px solid #ffffff55;background:#0d1c13;color:white;font-size:20px;letter-spacing:5px;text-align:center;direction:ltr;margin-bottom:10px">
+  <button class="btn" onclick="connectFriend()" style="width:100%;background:linear-gradient(#387eae,#245476)">🤝 ورود به اتاق دوست</button>
+  <div id="onlineStatus" class="pill" style="margin-top:12px;line-height:1.8;text-align:center">وضعیت: هنوز متصل نیست</div>
+ </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+(()=>{'use strict';
+const fallback=document.getElementById('fallback');
+function drawFallback(){try{fallback.style.display='block';const dpr=Math.min(devicePixelRatio||1,1.5),w=innerWidth,h=innerHeight;fallback.width=w*dpr;fallback.height=h*dpr;const c=fallback.getContext('2d');c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,w,h);let sky=c.createLinearGradient(0,0,0,h);sky.addColorStop(0,'#8fc6df');sky.addColorStop(.62,'#d7e5bd');sky.addColorStop(1,'#5d8245');c.fillStyle=sky;c.fillRect(0,0,w,h);const ox=w*.5,oy=h*.49,s=Math.min(w,h)*.012;function pt(x,z,y=0){return [ox+(x-z)*s,oy+(x+z)*s*.42-y*s*1.2]}function poly(points,color){c.beginPath();points.forEach((p,i)=>{let q=pt(...p);i?c.lineTo(...q):c.moveTo(...q)});c.closePath();c.fillStyle=color;c.fill();c.strokeStyle='#263c2b88';c.stroke()}poly([[-27,-25,0],[27,-25,0],[27,25,0],[-27,25,0]],'#709b51');for(let i=-24;i<25;i+=4){poly([[i,-24,.02],[i+2,-24,.02],[i+2,24,.02],[i,24,.02]],'#7aa45a55')}poly([[-13,-27,.08],[-9,-27,.08],[-9,27,.08],[-13,27,.08]],'#347da0');poly([[-7,-5,.1],[7,-5,.1],[7,5,.1],[-7,5,.1]],'#b4a17a');poly([[-6,-5,1],[6,-5,1],[6,5,1],[-6,5,1]],'#b7b0a0');poly([[-6,-5,2],[0,-5,2],[0,5,2],[-6,5,2]],'#d0c7b3');poly([[0,-5,2],[6,-5,2],[6,5,2],[0,5,2]],'#a89d8b');poly([[-4,-4,6],[0,-4,9],[0,4,9],[-4,4,6]],'#8c3328');poly([[0,-4,9],[4,-4,6],[4,4,6],[0,4,9]],'#a23d2d');function house2(x,z){poly([[x-1,z-1,0],[x+1,z-1,0],[x+1,z+1,0],[x-1,z+1,0]],'#9a7448');poly([[x-1,z-1,1],[x,z-1,2.3],[x,z+1,2.3],[x-1,z+1,1]],'#873b2c');poly([[x,z-1,2.3],[x+1,z-1,1],[x+1,z+1,1],[x,z+1,2.3]],'#a44b35')}house2(-12,-8);house2(13,-7);house2(15,-12);house2(-14,11);function tree2(x,z){let a=pt(x,z,0),b=pt(x,z,2);c.strokeStyle='#67452b';c.lineWidth=4;c.beginPath();c.moveTo(...a);c.lineTo(...b);c.stroke();for(let j=0;j<3;j++){let q=pt(x,z,2+j*1.2);c.fillStyle=['#285c35','#347343','#477f45'][j];c.beginPath();c.arc(q[0],q[1],s*(1.3-j*.2),0,Math.PI*2);c.fill()}}for(let i=0;i<25;i++){let a=i*2.4,r=19+(i%3)*2;tree2(Math.cos(a)*r,Math.sin(a)*r)}for(let i=0;i<4;i++){let q=pt([-6,6,-6,6][i],[-5,-5,5,5][i],2.5);c.fillStyle='#6b6257';c.beginPath();c.arc(q[0],q[1],s*1.1,0,Math.PI*2);c.fill()}c.fillStyle='#fff';c.font='bold 13px Tahoma';c.textAlign='center';c.fillText('نمای سازگار با گوشی — حالت جایگزین',w/2,h-95)}catch(e){}}
+window.addEventListener('error',()=>drawFallback());
+const canvas=document.getElementById('game'), gl=canvas.getContext('webgl',{antialias:true,alpha:true,powerPreference:'low-power'});
+if(!gl){drawFallback();return;}
+const vs=`attribute vec3 p;attribute vec3 n;attribute vec3 c;uniform mat4 mvp;uniform mat4 model;varying vec3 vC;varying float vL;varying float vD;varying float vSky;void main(){vec4 w=model*vec4(p,1.0);gl_Position=mvp*vec4(p,1.0);vec3 N=normalize(mat3(model)*n);vec3 L=normalize(vec3(-0.42,0.88,0.28));float sun=max(dot(N,L),0.0);vL=0.58+0.58*sun;vC=c;vD=gl_Position.z/gl_Position.w;vSky=clamp(N.y*0.5+0.5,0.0,1.0);}`;
+const fs=`precision mediump float;varying vec3 vC;varying float vL;varying float vD;varying float vSky;void main(){float fog=smoothstep(0.985,1.0,vD);vec3 col=vC*vL;col=mix(col,vec3(0.70,0.79,0.78),fog*0.10);col=pow(max(col,vec3(0.0)),vec3(0.92));gl_FragColor=vec4(col,1.0);}`;
+function shader(type,src){let s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(s));return s;}
+const prog=gl.createProgram();gl.attachShader(prog,shader(gl.VERTEX_SHADER,vs));gl.attachShader(prog,shader(gl.FRAGMENT_SHADER,fs));gl.bindAttribLocation(prog,0,'p');gl.bindAttribLocation(prog,1,'n');gl.bindAttribLocation(prog,2,'c');gl.linkProgram(prog);if(!gl.getProgramParameter(prog,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(prog));gl.useProgram(prog);
+const loc={mvp:gl.getUniformLocation(prog,'mvp'),model:gl.getUniformLocation(prog,'model')};
+let verts=[], norms=[], cols=[];
+function tri(a,b,c,col){let ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2];let nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx,L=Math.hypot(nx,ny,nz)||1;let nn=[nx/L,ny/L,nz/L];for(let v of [a,b,c]){verts.push(...v);norms.push(...nn);cols.push(...col);}}
+function quad(a,b,c,d,col){tri(a,b,c,col);tri(a,c,d,col)}
+function box(x,y,z,w,h,d,col){let x0=x-w/2,x1=x+w/2,y0=y,y1=y+h,z0=z-d/2,z1=z+d/2;quad([x0,y1,z0],[x1,y1,z0],[x1,y1,z1],[x0,y1,z1],col);quad([x0,y0,z1],[x1,y0,z1],[x1,y0,z0],[x0,y0,z0],col);quad([x0,y0,z0],[x1,y0,z0],[x1,y1,z0],[x0,y1,z0],col);quad([x1,y0,z1],[x0,y0,z1],[x0,y1,z1],[x1,y1,z1],col);quad([x0,y0,z1],[x0,y0,z0],[x0,y1,z0],[x0,y1,z1],col);quad([x1,y0,z0],[x1,y0,z1],[x1,y1,z1],[x1,y1,z0],col);}
+function cone(x,y,z,r,h,col,segments=8){let top=[x,y+h,z];for(let i=0;i<segments;i++){let a=i*Math.PI*2/segments,b=(i+1)*Math.PI*2/segments;tri([x+Math.cos(a)*r,y,z+Math.sin(a)*r],[x+Math.cos(b)*r,y,z+Math.sin(b)*r],top,col);}let center=[x,y,z];for(let i=0;i<segments;i++){let a=i*Math.PI*2/segments,b=(i+1)*Math.PI*2/segments;tri(center,[x+Math.cos(b)*r,y,z+Math.sin(b)*r],[x+Math.cos(a)*r,y,z+Math.sin(a)*r],col.map(v=>v*.8));}}
+function cylinder(x,y,z,r,h,col,seg=9){for(let i=0;i<seg;i++){let a=i*2*Math.PI/seg,b=(i+1)*2*Math.PI/seg;let p=[x+Math.cos(a)*r,y,z+Math.sin(a)*r],q=[x+Math.cos(b)*r,y,z+Math.sin(b)*r],P=[p[0],y+h,p[2]],Q=[q[0],y+h,q[2]];quad(p,q,Q,P,col);tri([x,y+h,z],Q,P,col);tri([x,y,z],p,q,col.map(v=>v*.75));}}
+function sphere(x,y,z,r,col){const rings=7,seg=9;for(let j=0;j<rings;j++){let t1=-Math.PI/2+j*Math.PI/rings,t2=-Math.PI/2+(j+1)*Math.PI/rings;for(let i=0;i<seg;i++){let a=i*2*Math.PI/seg,b=(i+1)*2*Math.PI/seg;let pt=(lat,lon)=>[x+r*Math.cos(lat)*Math.cos(lon),y+r*Math.sin(lat),z+r*Math.cos(lat)*Math.sin(lon)];quad(pt(t1,a),pt(t1,b),pt(t2,b),pt(t2,a),col);}}}
+function tree(x,z,s=1){cylinder(x,0,z,.17*s,1.45*s,[.30,.17,.085]);cone(x,.72*s,z,1.02*s,1.45*s,[.10,.29,.13],10);cone(x,1.28*s,z,.82*s,1.35*s,[.13,.36,.15],10);cone(x,1.82*s,z,.58*s,1.18*s,[.18,.43,.18],10);sphere(x-.25*s,1.55*s,z+.18*s,.34*s,[.20,.45,.19]);}
+function house(x,z,scale=1){box(x,0,z,2.1*scale,1.25*scale,1.8*scale,[.72,.55,.36]);box(x,1.22*scale,z,2.28*scale,.18*scale,1.98*scale,[.28,.23,.19]); // roof as two sloped planes
+let w=1.25*scale,d=1.05*scale,h=1.0*scale,y=1.3*scale;quad([x-w,y,z-d],[x,y+h,z-d],[x,y+h,z+d],[x-w,y,z+d],[.48,.16,.11]);quad([x,y+h,z-d],[x+w,y,z-d],[x+w,y,z+d],[x,y+h,z+d],[.56,.19,.12]);box(x,0,z-.91*scale,.48*scale,.8*scale,.08*scale,[.23,.15,.1]);box(x-.68*scale,.72*scale,z-.925*scale,.30*scale,.34*scale,.035*scale,[.20,.43,.52]);box(x+.68*scale,.72*scale,z-.925*scale,.30*scale,.34*scale,.035*scale,[.20,.43,.52]);box(x-.68*scale,.72*scale,z-.95*scale,.36*scale,.045*scale,.04*scale,[.30,.20,.12]);box(x-.68*scale,.72*scale,z-.95*scale,.045*scale,.38*scale,.04*scale,[.30,.20,.12]);box(x+.35*scale,1.85*scale,z+.48*scale,.28*scale,.95*scale,.30*scale,[.48,.40,.32]);box(x+.35*scale,2.35*scale,z+.48*scale,.36*scale,.12*scale,.36*scale,[.28,.24,.20]);}
+function tower(x,z){cylinder(x,0,z,.72,2.8,[.62,.59,.51],10);cone(x,2.65,z,.88,.95,[.38,.17,.12],10);box(x,1.2,z-.70,.18,.45,.05,[.22,.25,.24]);}
+function lumberjack(x,z,scale=1){
+// small timber yard and woodcutter: a shed, stacked logs, worker and hand tool
+let k=scale;
+box(x,0,z,2.35*k,1.35*k,1.9*k,[.43,.29,.16]);
+box(x,1.30*k,z,2.48*k,.16*k,2.02*k,[.25,.18,.12]);
+quad([x-1.35*k,1.38*k,z-1.12*k],[x,2.35*k,z-1.12*k],[x,2.35*k,z+1.12*k],[x-1.35*k,1.38*k,z+1.12*k],[.34,.20,.12]);
+quad([x,2.35*k,z-1.12*k],[x+1.35*k,1.38*k,z-1.12*k],[x+1.35*k,1.38*k,z+1.12*k],[x,2.35*k,z+1.12*k],[.40,.23,.13]);
+// doorway and warm timber details
+box(x,0.48*k,z-.965*k,.58*k,.96*k,.055*k,[.17,.12,.08]);
+box(x-.73*k,.74*k,z-.98*k,.34*k,.36*k,.045*k,[.19,.39,.43]);
+// neatly stacked cut logs beside the shed
+for(let row=0;row<3;row++){
+  for(let j=0;j<3;j++){
+    let lx=x+1.65*k+j*.34*k, ly=.20*k+row*.25*k;
+    box(lx,ly,z+.42*k,.88*k,.19*k,.20*k,[row%2?.39:.31,.20,.105]);
+    box(lx,ly,z+.315*k,.10*k,.15*k,.025*k,[.72,.56,.34]);
+  }
+}
+// worker in brown work clothes, with a visible hand axe (tool, not a weapon)
+person(x-1.85*k,z+.45*k,[.42,.27,.13]);
+cylinder(x-1.58*k,.62*k,z+.25*k,.045*k,.72*k,[.40,.25,.12],7);
+box(x-1.58*k,1.18*k,z+.25*k,.34*k,.18*k,.12*k,[.58,.61,.59]);
+// chopping block and stump
+cylinder(x-1.9*k,0,z-0.48*k,.34*k,.48*k,[.42,.25,.12],9);
+cylinder(x-1.9*k,.48*k,z-0.48*k,.34*k,.055*k,[.72,.55,.34],9);
+}
+function person(x,z,color=[.18,.25,.7]){cylinder(x,0,z,.16,.62,[.19,.2,.22],7);sphere(x,.78,z,.22,[.83,.64,.46]);box(x,.25,z,.42,.45,.28,color);}
+function rand2(x,z){let v=Math.sin(x*127.1+z*311.7)*43758.5453;return v-Math.floor(v);}
+function buildScene(){verts=[];norms=[];cols=[];
+// rolling patchwork terrain
+for(let x=-48;x<48;x+=1){for(let z=-48;z<48;z+=1){let h=(Math.sin(x*.23)*Math.cos(z*.19)+Math.sin(z*.31+x*.1))*.13;let n=rand2(x,z);let base=n>.78?[.34,.43,.22]:n<.12?[.30,.43,.24]:[.30,.49,.25];let c=base.map((v,k)=>Math.max(.05,Math.min(.95,v+(rand2(x+4,z+9)-.5)*.045)));quad([x,h,z],[x+1,h,z],[x+1,h,z+1],[x,h,z+1],c);}}
+// river strip
+for(let z=-48;z<48;z+=1){let x=-12+Math.sin(z*.17)*1.3;quad([x-.45,.02,z],[x+3.55,.02,z],[x+3.55,.02,z+1],[x-.45,.02,z+1],[.48,.43,.29]);quad([x,.055,z],[x+3.1,.055,z],[x+3.1,.055,z+1],[x,.055,z+1],rand2(2,z)>.5?[.10,.34,.48]:[.13,.40,.54]);quad([x+.18,.065,z+.2],[x+2.7,.065,z+.2],[x+2.7,.065,z+.28],[x+.18,.065,z+.28],[.35,.57,.63]);}
+// road to castle
+for(let z=-44;z<44;z+=1.35){box(-2,.045,z,2.5,.045,1.22,[.48+rand2(z,1)*.08,.40+rand2(z,2)*.07,.29+rand2(z,3)*.05]);for(let x=-2.9;x<-.7;x+=.72)box(x,.075,z+.55,.035,.025,.08,[.32,.28,.22]);}
+// castle courtyard base and keep
+box(0,.05,0,13,.25,11,[.57,.53,.43]);box(0,.18,0,5.2,4.2,4.6,[.62,.59,.51]);box(0,4.38,0,5.5,.25,4.9,[.48,.44,.38]);
+// keep roof
+cone(0,4.45,0,3.2,2.7,[.36,.15,.11],4);
+// castle walls
+box(0,.35,-5.2,13,.9,.65,[.63,.6,.53]);box(0,.35,5.2,13,.9,.65,[.63,.6,.53]);box(-6.2,.35,0,.65,.9,10.7,[.63,.6,.53]);box(6.2,.35,0,.65,.9,10.7,[.63,.6,.53]);
+for(let i=-5.5;i<=5.5;i+=1.4){box(i,1.05,-5.2,.55,.5,.65,[.72,.68,.59]);box(i,1.05,5.2,.55,.5,.65,[.72,.68,.59]);box(-6.2,1.05,i,.65,.5,.55,[.72,.68,.59]);box(6.2,1.05,i,.65,.5,.55,[.72,.68,.59]);}
+tower(-6.2,-5.2);tower(6.2,-5.2);tower(-6.2,5.2);tower(6.2,5.2);
+// gate
+box(0,.8,5.25,2.2,1.6,.2,[.25,.17,.12]);box(0,1.65,5.25,2.4,.2,.25,[.66,.59,.45]);
+// dark arrow slits and warm banners on the keep
+for(let x of [-1.55,1.55]){box(x,2.5,-2.34,.16,.72,.035,[.18,.20,.18]);box(x,2.5,2.34,.16,.72,.035,[.18,.20,.18]);}
+for(let z of [-1.3,1.3]){box(-2.64,2.45,z,.035,.62,.16,[.18,.20,.18]);box(2.64,2.45,z,.035,.62,.16,[.18,.20,.18]);}
+// flags
+cylinder(0,7.2,0,.045,2.3,[.25,.2,.13],6);quad([0,9.1,0],[1.45,8.7,0],[0,8.2,0],[0,9.1,0],[.75,.12,.09]);
+// villages / farms
+house(-12,-8,1.15);house(-15,-12,.9);house(13,-7,1.05);house(15,-12,.9);house(12,10,1.0);house(-13,12,.95);
+// windmill
+box(17,0,3,1.3,3,1.3,[.68,.58,.4]);cone(17,2.8,3,.95,1.5,[.37,.2,.13],4);cylinder(17,2.3,2.25,.14,.4,[.3,.25,.18]);
+// farms rows
+for(let i=0;i<5;i++){for(let j=0;j<4;j++){let x=10+i*.8,z=14+j*.75;box(x,.08,z,.35,.16,.48,[.43,.31,.12]);box(x,.22,z,.13,.24,.13,[.35,.58,.18]);}}
+// forest around edges
+for(let i=0;i<52;i++){let a=i*2.399;let r=31+(i%5)*2.1;tree(Math.cos(a)*r,Math.sin(a)*r,.85+(i%3)*.18);}
+for(let i=0;i<20;i++){tree(-42+i*1.3,12+Math.sin(i)*2,.9);}
+// low shrubs and natural grass tufts around the settlement
+for(let i=0;i<70;i++){let a=i*2.41,r=10+(i%7)*2.1,x=Math.cos(a)*r,z=Math.sin(a)*r;if(Math.abs(x+12)<4)continue; sphere(x,.20,z,.22+(i%3)*.06,[.18,.36+(i%4)*.025,.15]);}
+for(let i=0;i<90;i++){let x=-44+rand2(i,4)*88,z=-44+rand2(i,8)*88;if(Math.abs(x+12)<2.8)continue;let h=.25+rand2(i,10)*.25;box(x,h*.5,z,.035,h,.035,[.43,.57,.25]);}
+// people and horse
+person(-2,2,[.2,.28,.72]);person(2,-2,[.68,.18,.12]);person(-3,-2,[.2,.42,.28]);person(8,5,[.7,.25,.14]);
+// horse body/head/legs
+box(4,.65,2,1.35,.62,.48,[.38,.2,.1]);sphere(4.65,1.05,2,.29,[.4,.22,.12]);for(let dx of [-.45,.42])for(let dz of [-.16,.16])cylinder(4+dx,0,2+dz,.075,.62,[.22,.13,.08],6);
+// decorative stones
+for(let i=0;i<20;i++){let x=-9+(i%5)*4,z=8+Math.floor(i/5)*2.4;sphere(x,.12,z,.25,[.42,.43,.37]);}
+}
+buildScene();
+const buffer=gl.createBuffer();function upload(){gl.bindBuffer(gl.ARRAY_BUFFER,buffer);let data=new Float32Array(verts.length/3*9);for(let i=0;i<verts.length/3;i++){data.set(verts.slice(i*3,i*3+3),i*9);data.set(norms.slice(i*3,i*3+3),i*9+3);data.set(cols.slice(i*3,i*3+3),i*9+6);}gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,36,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,3,gl.FLOAT,false,36,12);gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,3,gl.FLOAT,false,36,24);window.vertexCount=verts.length/3;}
+upload();
+function perspective(fovy,aspect,near,far){let f=1/Math.tan(fovy/2),nf=1/(near-far);return new Float32Array([f/aspect,0,0,0,0,f,0,0,0,0,(far+near)*nf,-1,0,0,2*far*near*nf,0]);}
+function lookAt(eye,center,up){let z=norm(sub(eye,center)),x=norm(cross(up,z)),y=cross(z,x);return new Float32Array([x[0],y[0],z[0],0,x[1],y[1],z[1],0,x[2],y[2],z[2],0,-dot(x,eye),-dot(y,eye),-dot(z,eye),1]);}
+const sub=(a,b)=>a.map((v,i)=>v-b[i]),dot=(a,b)=>a.reduce((s,v,i)=>s+v*b[i],0),cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],norm=a=>{let l=Math.hypot(...a)||1;return a.map(v=>v/l)};
+let yaw=.72,pitch=.72,dist=55,target=[10,1,0],last=null,pinch=0;function resetCam(){yaw=.72;pitch=.72;dist=55;target=[10,1,0];}
+function resize(){let dpr=Math.min(devicePixelRatio||1,1.8);let w=Math.floor(innerWidth*dpr),h=Math.floor(innerHeight*dpr);if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;gl.viewport(0,0,w,h);}}window.addEventListener('resize',resize);resize();
+function frame(){resize();gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.CULL_FACE);gl.clearColor(.53,.72,.78,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);let cp=Math.max(.22,Math.min(1.25,pitch));let eye=[target[0]+Math.sin(yaw)*Math.cos(cp)*dist,target[1]+Math.sin(cp)*dist,target[2]+Math.cos(yaw)*Math.cos(cp)*dist];let view=lookAt(eye,target,[0,1,0]),pr=perspective(Math.PI/3,canvas.width/canvas.height,.1,150);let mvp=mul(pr,view);gl.useProgram(prog);gl.uniformMatrix4fv(loc.mvp,false,mvp);gl.uniformMatrix4fv(loc.model,false,identity());gl.drawArrays(gl.TRIANGLES,0,window.vertexCount);requestAnimationFrame(frame);}
+function identity(){return new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]);}function mul(a,b){let o=new Float32Array(16);for(let c=0;c<4;c++)for(let r=0;r<4;r++)o[c*4+r]=a[r]*b[c*4]+a[4+r]*b[c*4+1]+a[8+r]*b[c*4+2]+a[12+r]*b[c*4+3];return o;}
+let pointers=new Map();canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,[e.clientX,e.clientY]);last=[e.clientX,e.clientY];if(pointers.size===2){let a=[...pointers.values()];pinch=Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1]);}});canvas.addEventListener('pointermove',e=>{if(!pointers.has(e.pointerId))return;let old=pointers.get(e.pointerId),now=[e.clientX,e.clientY];pointers.set(e.pointerId,now);if(pointers.size===1&&last){yaw-=(now[0]-old[0])*.008;pitch=Math.max(.25,Math.min(1.28,pitch+(now[1]-old[1])*.006));}else if(pointers.size===2){let a=[...pointers.values()],d=Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1]);if(pinch)dist=Math.max(28,Math.min(92,dist-(d-pinch)*.065));pinch=d;}});function end(e){pointers.delete(e.pointerId);if(pointers.size<2)pinch=0;last=null;}canvas.addEventListener('pointerup',end);canvas.addEventListener('pointercancel',end);canvas.addEventListener('wheel',e=>{dist=Math.max(28,Math.min(92,dist+e.deltaY*.03));},{passive:true});
+let gold=500,wood=300,food=250,extra=[],lumberjackCount=0;let peer=null,gameConn=null,isHost=true,peerReady=false,roomRole="none",activeRoomCode="";let botMode=false,botBuilds=0,botGold=500,botWood=300,botFood=250,botLumberjack=0,botTimer=null;
+function toast(t){let el=document.getElementById('toast');el.textContent=t;el.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>el.style.display='none',2600);}
+function showStats(){for(let [id,v] of [['gold',gold],['wood',wood],['food',food]])document.getElementById(id).textContent=v;}
+function onlineStatus(t){let e=document.getElementById('onlineStatus');if(e)e.textContent='وضعیت: '+t;}
+function sendGameMsg(m){if(gameConn&&gameConn.open){try{gameConn.send(m)}catch(e){onlineStatus('ارسال اطلاعات ناموفق بود')}}}
+window.sendGameMsg=sendGameMsg;
+function snapshot(){return {type:'snapshot',gold,wood,food,extra:extra.slice()};}
+function setupConnection(conn){if(gameConn&&gameConn.open){conn.close();return;}gameConn=conn;conn.on('open',()=>{peerReady=true;isHost=(roomRole==='host');onlineStatus('متصل شدی! '+(isHost?'تو میزبان هستی':'دوستت میزبان است'));sendGameMsg({type:'hello'});});
+conn.on('data',m=>{if(!m||!m.type)return;
+ if(m.type==='hello'){if(isHost)sendGameMsg(snapshot());}
+ else if(m.type==='snapshot'){if(!isHost){for(const t of (m.extra||[])){build(t,true);}gold=m.gold;wood=m.wood;food=m.food;showStats();onlineStatus('بازی همگام شد؛ آماده بازی دونفره');}}
+ else if(m.type==='build_req'&&isHost){let ok=build(m.building);if(!ok)sendGameMsg({type:'reject',reason:'منابع کافی نیست'});}
+ else if(m.type==='build_done'&&!isHost){build(m.building,true);gold=m.gold;wood=m.wood;food=m.food;showStats();toast('ساختمان دوستت ساخته شد');}
+ else if(m.type==='state'&&!isHost){gold=m.gold;wood=m.wood;food=m.food;showStats();}
+ else if(m.type==='reject'){toast(m.reason||'درخواست انجام نشد');}
+ });
+ conn.on('close',()=>{peerReady=false;gameConn=null;onlineStatus('ارتباط قطع شد');toast('ارتباط با دوست قطع شد');});
+ conn.on('error',()=>onlineStatus('خطا در اتصال؛ شناسه را بررسی کنید'));
+}
+function closePeer(){try{if(gameConn){gameConn.close();gameConn=null;}if(peer){peer.destroy();peer=null;}}catch(e){}peerReady=false;}
+function makeRoomCode(){return String(Math.floor(100000+Math.random()*900000));}
+window.openOnline=function(){document.getElementById('onlinePanel').style.display='flex';onlineStatus('برای شروع، ساخت سریع اتاق را بزن');};
+window.closeOnline=function(){document.getElementById('onlinePanel').style.display='none';};
+window.createQuickRoom=function(){
+ // کد محلی را همان لحظه نشان بده؛ ثبت اتاق روی سرور در پس‌زمینه انجام می‌شود.
+ closePeer();roomRole='host';activeRoomCode=makeRoomCode();
+ const codeEl=document.getElementById('myPeerId');
+ codeEl.textContent=activeRoomCode;
+ onlineStatus('کد ساخته شد؛ در حال آماده‌سازی اتصال…');
+ if(!window.Peer){onlineStatus('کد ساخته شد، اما سرویس آنلاین هنوز بارگذاری نشده؛ چند لحظه دیگر دوباره بزن');return;}
+ const startRegistration=(attempt)=>{
+   const code=activeRoomCode;
+   try{
+     peer=new Peer('emp'+code,{debug:0});
+     peer.on('open',()=>{if(activeRoomCode!==code)return;onlineStatus('اتاق آماده است! حالا کد را برای دوستت بفرست');});
+     peer.on('connection',conn=>setupConnection(conn));
+     peer.on('error',e=>{
+       if(activeRoomCode!==code)return;
+       if(e.type==='unavailable-id'&&attempt<5){
+         try{if(peer)peer.destroy();}catch(_){}
+         activeRoomCode=makeRoomCode();codeEl.textContent=activeRoomCode;
+         onlineStatus('کد تازه ساخته شد؛ در حال آماده‌سازی…');
+         startRegistration(attempt+1);
+       }else onlineStatus('کد نمایش داده شد، اما اتصال آماده نشد: '+(e.type||'خطای اتصال'));
+     });
+   }catch(e){onlineStatus('کد ساخته شد، اما ثبت آنلاین ناموفق بود؛ دوباره تلاش کن');}
+ };
+ startRegistration(0);
+};
+window.copyMyPeer=function(){
+ const code=activeRoomCode;if(!code){toast('اول اتاق را بساز');return;}
+ if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(code).then(()=>toast('کد اتاق کپی شد')).catch(()=>manualCopy(code));}
+ else manualCopy(code);
+};
+function manualCopy(code){const t=document.createElement('textarea');t.value=code;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();try{document.execCommand('copy');toast('کد اتاق کپی شد');}catch(e){toast('کد را دستی کپی کن: '+code);}t.remove();}
+
+window.connectFriend=function(){
+ if(!window.Peer){onlineStatus('سرویس اتصال بارگذاری نشد؛ اینترنت را بررسی کن');return;}
+ let code=document.getElementById('friendPeerId').value.replace(/\D/g,'').slice(0,6);if(code.length!==6)return onlineStatus('کد اتاق باید ۶ رقم باشد');
+ closePeer();roomRole='guest';activeRoomCode=code;onlineStatus('در حال آماده‌سازی اتصال…');
+ try{peer=new Peer();peer.on('open',()=>{let c=peer.connect('emp'+code,{reliable:true});setupConnection(c);onlineStatus('در حال ورود به اتاق '+code+'…');});peer.on('error',e=>onlineStatus('خطای اتصال: '+(e.type||'اتاق پیدا نشد')));}catch(e){onlineStatus('اتصال شروع نشد؛ دوباره تلاش کن');}
+};
+window.startBotGame=function(){
+ if(botMode){botMode=false;clearInterval(botTimer);document.getElementById('botHud').style.display='none';toast('بازی با ربات متوقف شد');return;}
+ if(gameConn&&gameConn.open){toast('برای بازی با ربات، اول ارتباط آنلاین را قطع کن');return;}
+ botMode=true;botBuilds=0;botGold=500;botWood=300;botFood=250;botLumberjack=0;
+ document.getElementById('botHud').style.display='block';document.getElementById('botHud').textContent='🤖 رقیب در سمت شرقی نقشه • ساختمان‌ها: ۰';
+ // Mark the rival territory with a bright banner and initial settlement.
+ cylinder(35,0,19,.12,4.4,[.28,.22,.16],7);box(35.85,3.55,19,1.25,.78,.07,[.78,.12,.09]);
+ // Rival settlement is placed across the enlarged map, well away from the player's castle.
+ house(32,15,1.05);tower(40,15);house(32,22,.9);
+ box(36,.12,11,18,.24,.35,[.49,.39,.27]);box(36,.12,27,18,.24,.35,[.49,.39,.27]);
+ box(27,.12,19,.35,.24,16,[.49,.39,.27]);box(45,.12,19,.35,.24,16,[.49,.39,.27]);
+ upload();botBuilds=3;
+ botTimer=setInterval(()=>{
+   if(!botMode)return;
+   botGold+=18;botWood+=22+botLumberjack*7;botFood+=14;
+   let n=botBuilds, x=29+(n%4)*3.2, z=29+Math.floor(n/4)*3.2;
+   if(n%4===0&&botWood>=75&&botGold>=25){lumberjack(x,z,.82);botWood-=75;botGold-=25;botLumberjack++;}
+   else if(n%3===0&&botWood>=50&&botGold>=40){tower(x,z);botWood-=50;botGold-=40;}
+   else if(n%2===0&&botWood>=60&&botGold>=30){house(x,z,.82);botWood-=60;botGold-=30;}
+   else if(botWood>=40){for(let j=0;j<4;j++)box(x+j*.42,.08,z,.23,.16,.55,[.43,.31,.12]);botWood-=40;}
+   else {house(x,z,.75);}
+   botBuilds++;upload();
+   document.getElementById('botHud').textContent='🤖 امپراتوری ربات • ساختمان‌ها: '+botBuilds+' • 🪙 '+botGold+' • 🪵 '+botWood;
+ },6500);
+ toast('ربات وارد بازی شد؛ هر چند ثانیه امپراتوری‌اش را گسترش می‌دهد!');
+};
+window.build=function(type,remote=false){if(!remote&&gameConn&&gameConn.open&&!isHost){sendGameMsg({type:'build_req',building:type});toast('درخواست ساخت برای میزبان فرستاده شد');return true;}let x=-23+(extra.length%4)*3,z=-15+Math.floor(extra.length/4)*3;if(type==='house'){if(!remote&&(wood<60||gold<30))return toast('منابع کافی نیست'),false;if(!remote){wood-=60;gold-=30;}house(x,z,.9);if(!remote)toast('خانه ساخته شد!');}else if(type==='farm'){if(!remote&&wood<40)return toast('چوب کافی نیست'),false;if(!remote)wood-=40;for(let i=0;i<4;i++)box(x+i*.5,.08,z,.25,.16,.6,[.43,.31,.12]);if(!remote)toast('مزرعه ساخته شد!');}else if(type==='tower'){if(!remote&&(wood<50||gold<40))return toast('منابع کافی نیست'),false;if(!remote){wood-=50;gold-=40;}tower(x,z);if(!remote)toast('برج ساخته شد!');}else if(type==='lumberjack'){if(!remote&&(wood<75||gold<25))return toast('برای ساخت چوب‌بُر به ۷۵ چوب و ۲۵ طلا نیاز داری'),false;if(!remote){wood-=75;gold-=25;}lumberjack(x,z,.9);lumberjackCount++;if(!remote)toast('کارگاه چوب‌بُری ساخته شد؛ تولید چوب بیشتر شد!');}extra.push(type);upload();showStats();if(!remote&&gameConn&&gameConn.open)sendGameMsg({type:'build_done',building:type,gold,wood,food});return true;};window.resetCam=resetCam;
+setInterval(()=>{if(gameConn&&gameConn.open&&!isHost)return;gold+=5;wood+=3+lumberjackCount*8;food+=4;showStats();if(gameConn&&gameConn.open&&isHost)sendGameMsg({type:'state',gold,wood,food});},5000);
+try{frame();}catch(e){drawFallback();let el=document.getElementById('err');el.style.display='block';el.textContent='نمای سه‌بعدی اجرا نشد؛ حالت سازگار نمایش داده شد.';}
+})();
+</script></body></html>
