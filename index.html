@@ -1,3 +1,75 @@
+
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>امپراتوری من</title>
+<style>
+body{margin:0;background:#18271d;color:white;font-family:tahoma;text-align:center}
+header{padding:18px;background:#304b35;font-size:25px}
+.stats{display:flex;justify-content:space-around;flex-wrap:wrap;padding:12px;background:#263b2b}
+.stats span{padding:8px}
+#map{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;max-width:650px;margin:15px auto;padding:10px;background:#304b35}
+.tile{aspect-ratio:1;background:#64874c;border:2px solid #9ab66a;border-radius:9px;font-size:27px;display:grid;place-items:center}
+.enemy{background:#795344}
+button{padding:12px;margin:4px;border:0;border-radius:9px;background:#d6a03e;font-weight:bold}
+#msg{padding:10px;color:#ffdc8a}
+</style>
+</head>
+<body>
+<header>🏰 امپراتوری من</header>
+<div class="stats">
+<span>🪙 سکه: <b id="gold">100</b></span>
+<span>🪵 چوب: <b id="wood">60</b></span>
+<span>🌾 غذا: <b id="food">60</b></span>
+<span>🛡️ نگهبان: <b id="army">5</b></span>
+</div>
+<div id="msg">یک خانه از نقشه را انتخاب کن.</div>
+<div id="map"></div>
+<button onclick="build('farm')">🌾 مزرعه</button>
+<button onclick="build('mine')">⛏️ معدن</button>
+<button onclick="build('tower')">🏰 برج</button>
+<button onclick="recruit()">🛡️ نگهبان</button>
+<button onclick="nextTurn()">⏩ نوبت بعد</button>
+<script>
+let gold=100,wood=60,food=60,army=5,selected=0;
+let cells=Array(36).fill("empty");
+cells[0]="castle";cells[35]="enemy";
+function draw(){
+for(let id of ["gold","wood","food","army"])
+document.getElementById(id).textContent=eval(id);
+let map=document.getElementById("map");map.innerHTML="";
+cells.forEach((v,i)=>{
+let d=document.createElement("div");
+d.className="tile"+(v==="enemy"?" enemy":"");
+d.textContent={empty:"🌳",castle:"🏰",farm:"🌾",mine:"⛏️",tower:"🗼",enemy:"🏯"}[v];
+d.style.border=i===selected?"3px solid gold":"2px solid #9ab66a";
+d.onclick=()=>{selected=i;draw()};
+map.appendChild(d);
+});
+}
+function say(t){document.getElementById("msg").textContent=t}
+function build(type){
+if(cells[selected]!=="empty")return say("این خانه خالی نیست!");
+let cost={farm:20,mine:25,tower:30}[type];
+if(wood<cost)return say("چوب کافی نداری!");
+wood-=cost;cells[selected]=type;say("ساختمان ساخته شد!");draw();
+}
+function recruit(){
+if(gold<20||food<5)return say("منابع کافی نیست!");
+gold-=20;food-=5;army++;draw();say("نگهبان استخدام شد!");
+}
+function nextTurn(){
+gold+=15;wood+=10;
+cells.forEach(v=>{if(v==="farm")food+=12;if(v==="mine")gold+=12});
+food=Math.max(0,food-5);
+say("نوبت جدید شروع شد!");draw();
+}
+draw();
+</script>
+</body>
+</html>
 <!doctype html>
 <html lang="fa" dir="rtl">
 <head>
