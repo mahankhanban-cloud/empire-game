@@ -1,0 +1,118 @@
+
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Empire 3D</title>
+<style>
+*{margin:0;padding:0}
+body{overflow:hidden;background:#87b9d5;font-family:Arial}
+#game{width:100vw;height:100dvh;display:block}
+#info{position:fixed;top:12px;left:12px;color:white;
+background:#102331dd;padding:12px;border-radius:10px}
+</style>
+</head>
+<body>
+<div id="info">🏰 EMPIRE 3D<br>برای چرخاندن، صفحه را لمس کن</div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87b9d5);
+scene.fog = new THREE.Fog(0x87b9d5,35,100);
+
+const camera = new THREE.PerspectiveCamera(60,innerWidth/innerHeight,0.1,200);
+camera.position.set(15,13,18);
+
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
+renderer.shadowMap.enabled=true;
+document.body.appendChild(renderer.domElement);
+renderer.domElement.id='game';
+
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;
+controls.target.set(0,0,0);
+controls.maxPolarAngle=Math.PI/2.05;
+controls.minDistance=8;
+controls.maxDistance=35;
+
+scene.add(new THREE.HemisphereLight(0xffffff,0x526b37,2));
+
+const sun=new THREE.DirectionalLight(0xffffff,2.5);
+sun.position.set(15,25,10);
+sun.castShadow=true;
+scene.add(sun);
+
+const ground=new THREE.Mesh(
+ new THREE.PlaneGeometry(100,100),
+ new THREE.MeshStandardMaterial({color:0x477b37})
+);
+ground.rotation.x=-Math.PI/2;
+ground.receiveShadow=true;
+scene.add(ground);
+
+const grid=new THREE.GridHelper(100,50,0x527b42,0x527b42);
+grid.position.y=0.02;
+scene.add(grid);
+
+function block(x,y,z,w,h,d,color){
+ const mesh=new THREE.Mesh(
+  new THREE.BoxGeometry(w,h,d),
+  new THREE.MeshStandardMaterial({color,roughness:0.9})
+ );
+ mesh.position.set(x,y+h/2,z);
+ mesh.castShadow=true;
+ mesh.receiveShadow=true;
+ scene.add(mesh);
+ return mesh;
+}
+
+// قلعه اصلی
+block(0,0,0,9,1,8,0x77736a);
+block(0,1,0,7,5,6,0xb1a28a);
+
+// برج‌های قلعه
+for(const x of [-4,4]){
+ for(const z of [-3,3]){
+  block(x,1,z,2,7,2,0x93816c);
+  block(x,8,z,2.4,0.7,2.4,0x51483e);
+ }
+}
+
+// دروازه
+block(0,1,-3.1,2,3,0.5,0x493322);
+
+// درخت‌ها
+for(let i=0;i<35;i++){
+ const x=(Math.random()-.5)*65;
+ const z=(Math.random()-.5)*65;
+ if(Math.abs(x)<8&&Math.abs(z)<8)continue;
+ block(x,0,z,0.5,2,0.5,0x68462a);
+ const tree=new THREE.Mesh(
+  new THREE.ConeGeometry(1.5,4,7),
+  new THREE.MeshStandardMaterial({color:0x245b29})
+ );
+ tree.position.set(x,3,z);
+ tree.castShadow=true;
+ scene.add(tree);
+}
+
+function animate(){
+ requestAnimationFrame(animate);
+ controls.update();
+ renderer.render(scene,camera);
+}
+animate();
+
+addEventListener('resize',()=>{
+ camera.aspect=innerWidth/innerHeight;
+ camera.updateProjectionMatrix();
+ renderer.setSize(innerWidth,innerHeight);
+});
+</script>
+</body>
+</html>
